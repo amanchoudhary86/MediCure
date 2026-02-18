@@ -56,8 +56,8 @@ To explore the admin features, use the following demo credentials. You can also 
 - **Password**: `Citycare@2026`
 
 ### Super Admin (Central Control)
-- **Username**: `admin`
-- **Password**: `admin123`
+- **Username**: `apex@medicure.com`
+- **Password**: `Apex@2026`
 
 ## 📂 Project Structure
 
