@@ -329,44 +329,28 @@ body{
 }
 .header .nav li a {
 	color: #2C2D3F;
-	font-size: 14px;
-	font-weight: 500;
+	font-size: 15px;
+	font-weight: 600;
 	text-transform: capitalize;
-	padding: 25px 12px;
+	padding: 14px 16px;
 	position: relative;
 	display: inline-block;
 	position:relative;
+	border-radius: 20px;
+	transition: background 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
 }
 .header .nav li a::before {
-	position: absolute;
-	content: "";
-	left: 0;
-	bottom: 0;
-	height: 3px;
-	width:0%;
-	background: #1A76D1;
-	border-radius: 5px 5px 0 0;
-	opacity:0;
-	visibility:hidden;
-	-webkit-transition:all 0.4s ease;
-	-moz-transition:all 0.4s ease;
-	transition:all 0.4s ease;
-}
-.header .nav li.active a:before{
-	opacity:1;
-	visibility:visible;
-	width: 100%;
+	display:none;
 }
 .header .nav li.active a{
 	color:#1A76D1;
-}
-.header .nav li:hover a:before{
-	opacity:1;
-	width: 100%;
-	visibility:visible;
+	background: #e8f2ff;
+	box-shadow: 0 4px 10px rgba(26,118,209,0.15);
 }
 .header .nav li:hover a{
-	color:#1a76d1;
+	color:#1A76D1;
+	background: #f1f6ff;
+	box-shadow: 0 3px 8px rgba(0,0,0,0.05);
 }
 .header .nav li a i {
 	display: inline-block;
@@ -582,6 +566,73 @@ body{
 	animation: fadeInDown 0.5s both 0.1s;
 	box-shadow:0px 0px 13px #00000054;
 }
+/* Login Button Styling */
+.header .login-btn-container {
+	margin-left: 40px;
+}
+.header .login-btn {
+    background-color: #fff;
+    color: #1A76D1;
+    border: 1px solid #1A76D1;
+	padding: 10px 26px;
+	border-radius: 999px;
+    font-weight: 500;
+    text-transform: capitalize;
+    transition: all 0.3s ease;
+    display: inline-block;
+    text-decoration: none;
+    line-height: normal;
+}
+.header .login-btn:hover {
+    background-color: #1A76D1;
+    color: #fff;
+}
+.header .login-btn i {
+    margin-left: 5px;
+}
+/* Ensure dropdown behaves correctly with the button */
+.header .login-btn-wrapper {
+    position: relative;
+    display: inline-block;
+}
+.header .login-btn-wrapper .dropdown {
+    top: 100%;
+    right: 0;
+    left: auto;
+    margin-top: 10px;
+}
+
+/* New: modernize navbar layout and spacing */
+.main-menu .navigation {
+	display: flex;
+	align-items: center;
+	gap: 18px;
+}
+
+/* Make header feel lighter and separated */
+.header{
+	background-color:#fff;
+	position:relative;
+	box-shadow: 0 2px 8px rgba(15,20,30,0.04);
+	border-bottom: 1px solid #f0f3f8;
+}
+
+/* Emphasize the right-side actions */
+.get-quote .btn{
+	background: #1A76D1;
+	color: #fff;
+	padding: 10px 22px;
+	border-radius: 999px;
+	display: inline-block;
+}
+
+/* Slightly separate the login button to the far right on large screens */
+@media (min-width: 992px) {
+	.header .col-lg-5.col-12:last-child {
+		padding-right: 60px;
+	}
+}
+
 /*=========================
 	End Header CSS
 ===========================*/

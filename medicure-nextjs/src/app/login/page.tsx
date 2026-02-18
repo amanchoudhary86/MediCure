@@ -28,7 +28,7 @@ export default function Login() {
         const cleanPassword = password.trim();
 
         // 1. Central Control (Super Admin)
-        if (cleanEmail === 'superadmin' && cleanPassword === 'admin') {
+        if (cleanEmail === 'admin@medicure.com' && cleanPassword === 'Medicure@Admin2026') {
             router.push("/super_admin_dashboard");
             return;
         }
@@ -65,60 +65,92 @@ export default function Login() {
     return (
         <div className="login-body">
             <style jsx global>{`
+                @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
                 .login-body {
                     font-family: 'Poppins', sans-serif;
-                    background-color: #f4f7f6;
+                    background: linear-gradient(135deg, #1a1f2e 0%, #232940 100%);
                     display: flex;
                     justify-content: center;
                     align-items: center;
                     min-height: 100vh;
-                    background-image: url('/static/img/slider2.jpg');
-                    background-size: cover;
-                    background-position: center;
                     position: relative;
+                    overflow: hidden;
+                }
+
+                /* Animated background elements */
+                .login-body::before, .login-body::after {
+                    content: '';
+                    position: absolute;
+                    width: 600px;
+                    height: 600px;
+                    border-radius: 50%;
+                    background: radial-gradient(circle, rgba(26, 118, 209, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+                    z-index: 0;
+                    animation: float 10s infinite ease-in-out alternate;
                 }
 
                 .login-body::before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(26, 118, 209, 0.85); /* Proper overlay color matches brand */
-                    z-index: 1;
+                    top: -200px;
+                    left: -200px;
+                }
+
+                .login-body::after {
+                    bottom: -200px;
+                    right: -200px;
+                    animation-delay: -5s;
+                }
+
+                @keyframes float {
+                    0% { transform: translate(0, 0); }
+                    100% { transform: translate(50px, 50px); }
                 }
 
                 .login-container {
                     position: relative;
                     z-index: 2;
-                    background: #fff;
+                    background: rgba(30, 37, 54, 0.75);
+                    backdrop-filter: blur(16px);
+                    -webkit-backdrop-filter: blur(16px);
                     width: 100%;
-                    max-width: 450px;
-                    padding: 40px;
-                    border-radius: 12px;
-                    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+                    max-width: 480px;
+                    padding: 45px;
+                    border-radius: 24px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
                     text-align: center;
+                    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+                }
+
+                @keyframes slideUp {
+                    from { opacity: 0; transform: translateY(40px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
 
                 .login-header {
-                    margin-bottom: 30px;
+                    margin-bottom: 35px;
                 }
 
                 .login-header h2 {
-                    color: #2C2D3F;
-                    font-weight: 600;
-                    font-size: 24px;
-                    margin-bottom: 10px;
+                    color: #ffffff;
+                    font-weight: 700;
+                    font-size: 28px;
+                    margin-bottom: 8px;
+                    letter-spacing: -0.5px;
+                }
+
+                .login-header p {
+                    color: rgba(255, 255, 255, 0.6);
+                    font-size: 15px;
                 }
 
                 .toggle-container {
                     display: flex;
-                    background: #f1f1f1;
-                    border-radius: 30px;
-                    margin-bottom: 30px;
-                    position: relative;
+                    background: rgba(0, 0, 0, 0.2);
+                    border-radius: 50px;
+                    margin-bottom: 35px;
                     padding: 4px;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
                 }
 
                 .toggle-btn {
@@ -126,30 +158,35 @@ export default function Login() {
                     border: none;
                     background: transparent;
                     padding: 12px;
-                    border-radius: 25px;
+                    border-radius: 50px;
                     cursor: pointer;
                     font-size: 14px;
                     font-weight: 500;
-                    color: #666;
-                    transition: all 0.3s ease;
+                    color: rgba(255, 255, 255, 0.6);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
                     outline: none;
                 }
 
-                .toggle-btn.active {
-                    background: #1A76D1;
+                .toggle-btn:hover {
                     color: #fff;
-                    box-shadow: 0 4px 10px rgba(26, 118, 209, 0.3);
+                }
+
+                .toggle-btn.active {
+                    background: linear-gradient(90deg, #1A76D1, #00C6FF);
+                    color: #fff;
+                    box-shadow: 0 4px 15px rgba(26, 118, 209, 0.3);
+                    font-weight: 600;
                 }
 
                 .form-group {
-                    margin-bottom: 20px;
+                    margin-bottom: 24px;
                     text-align: left;
                 }
 
                 .form-group label {
                     display: block;
                     margin-bottom: 8px;
-                    color: #2C2D3F;
+                    color: rgba(255, 255, 255, 0.85);
                     font-size: 14px;
                     font-weight: 500;
                 }
@@ -160,52 +197,77 @@ export default function Login() {
 
                 .input-wrapper input {
                     width: 100%;
-                    padding: 12px 15px 12px 40px;
-                    border: 1px solid #ddd;
-                    border-radius: 6px;
-                    font-size: 14px;
-                    transition: all 0.3s;
+                    padding: 14px 16px 14px 45px;
+                    background: rgba(0, 0, 0, 0.2);
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-radius: 12px;
+                    color: #ffffff;
+                    font-size: 15px;
+                    transition: all 0.3s ease;
                     outline: none;
                 }
 
+                .input-wrapper input::placeholder {
+                    color: rgba(255, 255, 255, 0.3);
+                }
+
                 .input-wrapper input:focus {
+                    background: rgba(0, 0, 0, 0.3);
                     border-color: #1A76D1;
-                    box-shadow: 0 0 0 3px rgba(26, 118, 209, 0.1);
+                    box-shadow: 0 0 0 4px rgba(26, 118, 209, 0.15);
                 }
 
                 .input-wrapper i.icon {
                     position: absolute;
-                    left: 15px;
+                    left: 16px;
                     top: 50%;
                     transform: translateY(-50%);
-                    color: #999;
+                    color: rgba(255, 255, 255, 0.4);
+                    font-size: 16px;
+                    transition: color 0.3s;
+                }
+
+                .input-wrapper input:focus ~ i.icon {
+                    color: #1A76D1;
                 }
 
                 .input-wrapper i.toggle-password {
                     position: absolute;
-                    right: 15px;
+                    right: 16px;
                     top: 50%;
                     transform: translateY(-50%);
-                    color: #999;
+                    color: rgba(255, 255, 255, 0.4);
                     cursor: pointer;
+                    transition: color 0.3s;
+                }
+
+                .input-wrapper i.toggle-password:hover {
+                    color: #fff;
                 }
 
                 .submit-btn {
                     width: 100%;
-                    padding: 12px;
-                    background: #1A76D1;
+                    padding: 14px;
+                    background: linear-gradient(90deg, #1A76D1, #00C6FF);
                     color: #fff;
                     border: none;
-                    border-radius: 6px;
+                    border-radius: 12px;
                     font-size: 16px;
-                    font-weight: 500;
+                    font-weight: 600;
                     cursor: pointer;
-                    transition: background 0.3s;
+                    transition: all 0.3s ease;
                     margin-top: 10px;
+                    box-shadow: 0 4px 15px rgba(26, 118, 209, 0.3);
                 }
 
                 .submit-btn:hover {
-                    background: #2C2D3F;
+                    background: linear-gradient(90deg, #155bb5, #009ecf);
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px rgba(26, 118, 209, 0.4);
+                }
+
+                .submit-btn:active {
+                    transform: translateY(0);
                 }
 
                 .form-section {
@@ -218,52 +280,78 @@ export default function Login() {
                 }
 
                 @keyframes fadeIn {
-                    from {
-                        opacity: 0;
-                        transform: translateY(10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
 
                 .home-link {
-                    display: inline-block;
-                    margin-top: 20px;
-                    color: #666;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-top: 25px;
+                    color: rgba(255, 255, 255, 0.5);
                     text-decoration: none;
                     font-size: 14px;
                     transition: color 0.3s;
                 }
 
                 .home-link:hover {
-                    color: #1A76D1;
+                    color: #ffffff;
                 }
 
+                /* Demo Credentials Box */
                 .demo-credentials {
-                    margin-top: 25px;
-                    font-size: 12px;
+                    margin-top: 30px;
                     text-align: left;
-                    background: #f8f9fa;
-                    padding: 15px;
-                    border-radius: 8px;
-                    border: 1px solid #eee;
+                    background: rgba(255, 255, 255, 0.03);
+                    padding: 16px;
+                    border-radius: 12px;
+                    border: 1px solid rgba(255, 255, 255, 0.08);
                 }
 
                 .demo-credentials h4 {
-                    margin-bottom: 8px;
-                    color: #555;
+                    margin-bottom: 10px;
+                    color: rgba(255, 255, 255, 0.7);
                     font-size: 13px;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
                 }
 
                 .demo-credentials code {
                     display: block;
-                    margin-bottom: 4px;
-                    color: #1A76D1;
-                    background: rgba(26, 118, 209, 0.1);
-                    padding: 2px 5px;
-                    border-radius: 4px;
+                    margin-bottom: 6px;
+                    color: #4ade80;
+                    font-family: 'Consolas', monospace;
+                    font-size: 12px;
+                    background: rgba(74, 222, 128, 0.1);
+                    padding: 6px 10px;
+                    border-radius: 6px;
+                    border: 1px solid rgba(74, 222, 128, 0.15);
+                }
+
+                .download-link {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-top: 15px;
+                    color: #fff;
+                    text-decoration: none;
+                    font-size: 13px;
+                    font-weight: 500;
+                    transition: all 0.3s;
+                    padding: 10px 16px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 8px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    width: 100%;
+                    justify-content: center;
+                }
+
+                .download-link:hover {
+                    background: rgba(255, 255, 255, 0.2);
+                    transform: translateY(-2px);
+                    border-color: rgba(255, 255, 255, 0.3);
                 }
             `}</style>
 
@@ -273,7 +361,7 @@ export default function Login() {
             <div className="login-container">
                 <div className="login-header">
                     <h2>Portal Login</h2>
-                    <p style={{ color: '#666', fontSize: '14px' }}>Select your role to continue</p>
+                    <p>Select your role to access the dashboard</p>
                 </div>
 
                 <div className="toggle-container">
@@ -327,14 +415,14 @@ export default function Login() {
                                 ></i>
                             </div>
                         </div>
-                        {error && <p style={{ color: 'red', fontSize: '13px', marginBottom: '10px' }}>{error}</p>}
+                        {error && <p style={{ color: '#ff6b6b', fontSize: '13px', marginBottom: '15px', fontWeight: 500, background: 'rgba(255, 107, 107, 0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255, 107, 107, 0.2)' }}>{error}</p>}
                         <button type="submit" className="submit-btn">Login as Central Admin</button>
                     </form>
 
                     <div className="demo-credentials">
                         <h4>🔑 Central Control Demo:</h4>
-                        <code>User: superadmin</code>
-                        <code>Pass: admin</code>
+                        <code>User: admin@medicure.com</code>
+                        <code>Pass: Medicure@Admin2026</code>
                     </div>
                 </div>
 
@@ -348,7 +436,7 @@ export default function Login() {
                                 <input
                                     type="text"
                                     name="username"
-                                    placeholder="Enter email"
+                                    placeholder="Enter hospital email"
                                     required
                                     autoComplete="off"
                                     onChange={(e) => setEmail(e.target.value)}
@@ -374,14 +462,22 @@ export default function Login() {
                                 ></i>
                             </div>
                         </div>
-                        {error && <p style={{ color: 'red', fontSize: '13px', marginBottom: '10px' }}>{error}</p>}
+                        {error && <p style={{ color: '#ff6b6b', fontSize: '13px', marginBottom: '15px', fontWeight: 500, background: 'rgba(255, 107, 107, 0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(255, 107, 107, 0.2)' }}>{error}</p>}
                         <button type="submit" className="submit-btn">Login as Hospital Admin</button>
                     </form>
 
                     <div className="demo-credentials">
-                        <h4>🛠️ Hospital Admin Demo:</h4>
-                        <code>User: ashwini@gmail.com | Pass: Ashwini2025</code>
-                        <code>User: artemis@gmail.com | Pass: Artemis2025</code>
+                        <h4>🛠️ Hospital Admin Access (Demo):</h4>
+                        <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '15px', lineHeight: '1.5' }}>
+                            <strong>Note:</strong> Use these credentials to test appointment booking for specific hospitals.
+                            Download the PDF below for the full list of hospital logins.
+                        </p>
+                        <code>User: citycare@medicure.com | Pass: CityCare@2026</code>
+                        <code>User: apex@medicure.com | Pass: Apex@2026</code>
+
+                        <a href="/hospital-details.xlsx" download className="download-link">
+                            <i className="fa-solid fa-file-excel"></i> Download Full Credentials List (Excel)
+                        </a>
                     </div>
                 </div>
 

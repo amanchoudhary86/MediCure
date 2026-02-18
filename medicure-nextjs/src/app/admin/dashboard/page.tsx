@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { hospitals, findHospitalById } from "@/lib/hospitals";
 import { sendTelegramNotification } from "@/app/actions/telegram";
+import { getHospitalBeds, getBedStats } from "@/lib/bed-data";
+import { getHospitalBloodStocks } from "@/lib/blood-data";
 
-type ActiveView = "dashboard" | "settings" | "add-patient" | "discharge" | "appointment";
+type ActiveView = "dashboard" | "settings" | "add-patient" | "discharge" | "appointment" | "blood-bank";
 
 // Hospital settings data
 const defaultHospital = {
@@ -82,9 +84,10 @@ export default function AdminDashboard() {
     const [successMsg, setSuccessMsg] = useState("");
     const [newPatient, setNewPatient] = useState({ name: "", dob: "", gender: "", address: "", phone: "", email: "", aadhar: "", bedType: "General", bedNumber: "", doctor: "" });
     const [discharge, setDischarge] = useState({ patientId: "", patientName: "", gender: "", address: "", admissionDate: "", dischargeDate: "", diagnosis: "", treatment: "", bedType: "", doctor: "", summary: "", followUp: "", medications: "", contact: "" });
-    const [newAppt, setNewAppt] = useState({ patient: "", dob: "", gender: "", mobile: "", dept: "", symptoms: "", priority: "Routine", hospital: "", isEmergency: false, consent: false, date: "", time: "", chatId: "" });
+
     const router = useRouter();
 
+    // Load hospital info and appointments from localStorage on mount
     // Load hospital info and appointments from localStorage on mount
     useEffect(() => {
         const storedId = localStorage.getItem("hospitalId");
@@ -92,15 +95,39 @@ export default function AdminDashboard() {
         if (storedId && storedName) {
             const h = findHospitalById(storedId);
             if (h) {
-                setHospital(prev => ({ ...prev, name: h.name, email: h.email }));
+                setHospital(prev => ({ ...prev, name: h.name, email: h.email, id: h.id }));
             } else {
                 setHospital(prev => ({ ...prev, name: storedName }));
             }
+
+            // Sync Bed Stats
+            const updateBedStats = () => {
+                const beds = getHospitalBeds(storedId);
+                const stats = getBedStats(beds);
+                setHospital(prev => ({
+                    ...prev,
+                    beds: stats.general.total,
+                    generalOccupied: stats.general.occupied,
+                    icuBeds: stats.icu.total,
+                    icuOccupied: stats.icu.occupied,
+                    ventilators: stats.ventilator.total,
+                    ventilatorOccupied: stats.ventilator.occupied,
+                }));
+            };
+
+            updateBedStats();
+            window.addEventListener("medicure-bed-update", updateBedStats);
+
             // Load appointments from localStorage for this hospital
-            const storageKey = `appointments_${storedId}`;
-            const stored = JSON.parse(localStorage.getItem(storageKey) || "[]");
-            if (stored.length > 0) {
-                const mapped = stored.map((a: any, i: number) => ({
+            const storageKeyAppt = `appointments_${storedId}`;
+            const storedAppts = JSON.parse(localStorage.getItem(storageKeyAppt) || "[]");
+
+            // Load patients from localStorage for this hospital
+            const storageKeyPatient = `patients_${storedId}`;
+            const storedPatients = JSON.parse(localStorage.getItem(storageKeyPatient) || "[]");
+
+            if (storedAppts.length > 0) {
+                const mapped = storedAppts.map((a: any, i: number) => ({
                     id: a.id || `A${String(i + 1).padStart(3, "0")}`,
                     patient: a.patient,
                     doctor: a.hospitalName || storedName,
@@ -111,18 +138,26 @@ export default function AdminDashboard() {
                     chatId: a.chatId || "",
                 }));
 
-                // Deduplicate all appointments (prev + mapped) based on ID.
-                // We prefer the 'mapped' (localStorage) version if duplicates exist, or we can just blindly unnecessary merge.
-                // Actually, if we have duplicates, we should just take unique IDs.
-                // Correctly merge mock data with stored data, ensuring no duplicates.
-                const all = [...mockAppointments, ...mapped];
-                const uniqueMap = new Map();
-                all.forEach(item => {
-                    if (item.id) uniqueMap.set(item.id, item);
+                const allAppts = [...mockAppointments, ...mapped];
+                const uniqueMapAppts = new Map();
+                allAppts.forEach(item => {
+                    if (item.id) uniqueMapAppts.set(item.id, item);
                 });
-
-                setAppointments(Array.from(uniqueMap.values()));
+                setAppointments(Array.from(uniqueMapAppts.values()));
             }
+
+            if (storedPatients.length > 0) {
+                const allPatients = [...mockPatients, ...storedPatients];
+                const uniqueMapPatients = new Map();
+                allPatients.forEach(item => {
+                    if (item.id) uniqueMapPatients.set(item.id, item);
+                });
+                setPatients(Array.from(uniqueMapPatients.values()));
+            }
+
+            return () => {
+                window.removeEventListener("medicure-bed-update", updateBedStats);
+            };
         }
     }, []);
 
@@ -131,44 +166,37 @@ export default function AdminDashboard() {
     const handleAddPatient = (e: React.FormEvent) => {
         e.preventDefault();
         const p = { id: `P${String(patients.length + 1).padStart(3, "0")}`, name: newPatient.name, age: 0, gender: newPatient.gender, bed: `${newPatient.bedType[0]}-${newPatient.bedNumber}`, type: newPatient.bedType, doctor: newPatient.doctor, admitted: new Date().toISOString().split("T")[0], status: "Stable" };
-        setPatients([...patients, p]);
+        const updatedPatients = [...patients, p];
+        setPatients(updatedPatients);
+
+        // Persist patients
+        const storedId = localStorage.getItem("hospitalId");
+        if (storedId) {
+            const storageKey = `patients_${storedId}`;
+            localStorage.setItem(storageKey, JSON.stringify(updatedPatients));
+        }
+
         setNewPatient({ name: "", dob: "", gender: "", address: "", phone: "", email: "", aadhar: "", bedType: "General", bedNumber: "", doctor: "" });
         showSuccess(`Patient ${p.name} admitted successfully!`);
     };
 
     const handleDischarge = (e: React.FormEvent) => {
         e.preventDefault();
-        setPatients(patients.filter(p => p.id !== discharge.patientId));
+        const updatedPatients = patients.filter(p => p.id !== discharge.patientId);
+        setPatients(updatedPatients);
+
+        // Persist patients
+        const storedId = localStorage.getItem("hospitalId");
+        if (storedId) {
+            const storageKey = `patients_${storedId}`;
+            localStorage.setItem(storageKey, JSON.stringify(updatedPatients));
+        }
+
         showSuccess(`Patient ${discharge.patientName || discharge.patientId} discharged successfully!`);
         setDischarge({ patientId: "", patientName: "", gender: "", address: "", admissionDate: "", dischargeDate: "", diagnosis: "", treatment: "", bedType: "", doctor: "", summary: "", followUp: "", medications: "", contact: "" });
     };
 
-    const handleAddAppt = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (newAppt.isEmergency) {
-            showSuccess(`🚨 Emergency case detected! Redirecting to Emergency Dashboard...`);
-            setTimeout(() => router.push("/admin/dashboard"), 2000);
-            return;
-        }
-        if (!newAppt.consent) { showSuccess("⚠️ Please confirm the consent checkbox."); return; }
-        const selHospital = hospitalList.find(h => h.name === newAppt.hospital);
-        // Use timestamp for unique ID to avoid collisions
-        const newId = `A${Date.now()}`;
-        const a = { id: newId, patient: newAppt.patient, doctor: selHospital?.name || "", dept: newAppt.dept, date: newAppt.date, time: newAppt.time, status: "Pending", chatId: "" };
 
-        const updatedAppointments = [...appointments, a];
-        setAppointments(updatedAppointments);
-
-        // Persist to localStorage immediately
-        const storedId = localStorage.getItem("hospitalId");
-        if (storedId) {
-            const storageKey = `appointments_${storedId}`;
-            localStorage.setItem(storageKey, JSON.stringify(updatedAppointments));
-        }
-
-        setNewAppt({ patient: "", dob: "", gender: "", mobile: "", dept: "", symptoms: "", priority: "Routine", hospital: "", isEmergency: false, consent: false, date: "", time: "", chatId: "" });
-        showSuccess(`Appointment for ${a.patient} scheduled at ${selHospital?.name || "hospital"}!`);
-    };
 
     const handleSaveSettings = (e: React.FormEvent) => { e.preventDefault(); showSuccess("Hospital settings saved!"); };
 
@@ -395,6 +423,10 @@ export default function AdminDashboard() {
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" /></svg>
                         Discharge
                     </button></li>
+                    <li><button className={`ha-nav-btn ${activeView === "blood-bank" ? "active" : ""}`} onClick={() => setActiveView("blood-bank")}>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15 11.25l-3-3m0 0l-3 3m3-3v7.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        Blood Bank
+                    </button></li>
                     <li><button className={`ha-nav-btn ${activeView === "appointment" ? "active" : ""}`} onClick={() => setActiveView("appointment")}>
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
                         Appointments
@@ -417,6 +449,7 @@ export default function AdminDashboard() {
                         {activeView === "add-patient" && "Add Patient"}
                         {activeView === "discharge" && "Discharge Patient"}
                         {activeView === "appointment" && "Appointments"}
+                        {activeView === "blood-bank" && "Blood Bank Inventory"}
                     </h1>
                     <div className="ha-topbar-user">
                         <div className="ha-avatar">HA</div>
@@ -585,141 +618,6 @@ export default function AdminDashboard() {
 
                 {/* ═══ APPOINTMENTS ═══ */}
                 {activeView === "appointment" && (<>
-
-                    {/* Emergency Alert */}
-                    {newAppt.isEmergency && (
-                        <div className="ha-emergency-alert">
-                            <div className="icon">🚨</div>
-                            <div className="text">Emergency case detected! Upon submission, patient will be redirected to the <strong>Emergency Dashboard</strong> for immediate triage.</div>
-                        </div>
-                    )}
-
-                    <div className="ha-panel" style={{ marginBottom: 24 }}>
-                        <div className="ha-panel-header"><h3>📋 Schedule New Appointment</h3></div>
-                        <form className="ha-form" onSubmit={handleAddAppt}>
-
-                            {/* ── Section 1: Patient Information ── */}
-                            <div className="ha-section-label" style={{ borderTop: 'none', paddingTop: 0, marginBottom: 16 }}>1️⃣ Patient Information</div>
-                            <div className="ha-form-grid">
-                                <div className="ha-form-group"><label>Patient Full Name</label><input required placeholder="Full name" value={newAppt.patient} onChange={e => setNewAppt({ ...newAppt, patient: e.target.value })} /></div>
-                                <div className="ha-form-group"><label>Date of Birth</label><input type="date" required value={newAppt.dob} onChange={e => setNewAppt({ ...newAppt, dob: e.target.value })} /></div>
-                                <CustomSelect
-                                    label="Gender"
-                                    required
-                                    value={newAppt.gender}
-                                    options={[
-                                        { value: "Male", label: "Male" },
-                                        { value: "Female", label: "Female" },
-                                        { value: "Other", label: "Other" }
-                                    ]}
-                                    onChange={(e: any) => setNewAppt({ ...newAppt, gender: e.target.value })}
-                                    placeholder="Select Gender"
-                                />
-                                <div className="ha-form-group"><label>Mobile Number</label><input type="tel" required placeholder="+91 9876543210" value={newAppt.mobile} onChange={e => setNewAppt({ ...newAppt, mobile: e.target.value })} /></div>
-                                <div className="ha-form-group"><label>Telegram Chat ID (For Notifications)</label><input type="text" placeholder="e.g. 2050811270" value={newAppt.chatId} onChange={e => setNewAppt({ ...newAppt, chatId: e.target.value })} /></div>
-                            </div>
-
-                            {/* ── Section 2: Medical Details ── */}
-                            <div className="ha-section-label" style={{ marginTop: 24, marginBottom: 16 }}>2️⃣ Medical Details</div>
-                            <div className="ha-form-grid">
-                                <CustomSelect
-                                    label="Department / Speciality"
-                                    required
-                                    value={newAppt.dept}
-                                    options={[
-                                        { value: "General Medicine", label: "General Medicine" },
-                                        { value: "Orthopaedics", label: "Orthopaedics" },
-                                        { value: "Cardiology", label: "Cardiology" },
-                                        { value: "Paediatrics", label: "Paediatrics" },
-                                        { value: "Gynaecology", label: "Gynaecology" },
-                                        { value: "Neurology", label: "Neurology" },
-                                        { value: "ENT", label: "ENT" },
-                                        { value: "Dermatology", label: "Dermatology" },
-                                        { value: "Emergency", label: "🚨 Emergency" }
-                                    ]}
-                                    onChange={(e: any) => {
-                                        const val = e.target.value;
-                                        if (val === "Emergency") {
-                                            setNewAppt({ ...newAppt, dept: val, isEmergency: true, priority: "Emergency" });
-                                        } else {
-                                            setNewAppt({ ...newAppt, dept: val, isEmergency: false });
-                                        }
-                                    }}
-                                    placeholder="Select Department"
-                                />
-                                <CustomSelect
-                                    label={<span>Priority Level {newAppt.priority && <span className={`ha-priority-badge ${newAppt.priority.toLowerCase()}`}>{newAppt.priority}</span>}</span>}
-                                    required
-                                    value={newAppt.priority}
-                                    options={[
-                                        { value: "Routine", label: "🟢 Routine" },
-                                        { value: "Urgent", label: "🟡 Urgent" },
-                                        { value: "Emergency", label: "🔴 Emergency" }
-                                    ]}
-                                    onChange={(e: any) => setNewAppt({ ...newAppt, priority: e.target.value })}
-                                    placeholder="Select Priority"
-                                />
-                                <div className="ha-form-group full"><label>Symptoms / Reason for Visit</label><textarea required placeholder="Describe symptoms, complaints, or reason for the appointment..." rows={3} value={newAppt.symptoms} onChange={e => setNewAppt({ ...newAppt, symptoms: e.target.value })} /></div>
-                            </div>
-
-                            {/* ── Section 3: Appointment Preferences ── */}
-                            <div className="ha-section-label" style={{ marginTop: 24, marginBottom: 16 }}>3️⃣ Appointment Preferences</div>
-                            <div className="ha-form-grid">
-                                <div className="ha-form-group"><label>Preferred Date</label><input type="date" required value={newAppt.date} onChange={e => setNewAppt({ ...newAppt, date: e.target.value })} /></div>
-                                <div className="ha-form-group"><label>Preferred Time Slot</label><input type="time" required value={newAppt.time} onChange={e => setNewAppt({ ...newAppt, time: e.target.value })} /></div>
-                            </div>
-
-                            {/* ── Section 4: Hospital Selection ── */}
-                            <div className="ha-section-label" style={{ marginTop: 24, marginBottom: 16 }}>4️⃣ Hospital Selection</div>
-                            <div className="ha-hospital-select">
-                                {hospitalList.map(h => (
-                                    <label key={h.name} className={`ha-hospital-option ${newAppt.hospital === h.name ? 'selected' : ''}`}>
-                                        <input type="radio" name="hospital" value={h.name} checked={newAppt.hospital === h.name} onChange={e => setNewAppt({ ...newAppt, hospital: e.target.value })} />
-                                        <div className="ha-hospital-info">
-                                            <div className="ha-hospital-name">{h.name}</div>
-                                            <div className="ha-hospital-loc">📍 {h.location}</div>
-                                            <div className="ha-hospital-meta">
-                                                <span className="ha-hospital-time">🕐 {h.timings}</span>
-                                                <span className="ha-hospital-rating">⭐ {h.rating}/5</span>
-                                            </div>
-                                        </div>
-                                    </label>
-                                ))}
-                            </div>
-
-                            {/* ── Section 5: Emergency Check ── */}
-                            <div className="ha-section-label" style={{ marginTop: 24, marginBottom: 16 }}>5️⃣ Safety & Validation</div>
-                            <div className="ha-form-grid">
-                                <CustomSelect
-                                    label="Is this an Emergency Case?"
-                                    value={newAppt.isEmergency ? "yes" : "no"}
-                                    options={[
-                                        { value: "no", label: "No" },
-                                        { value: "yes", label: "🚨 Yes — Redirect to Emergency Dashboard" }
-                                    ]}
-                                    onChange={(e: any) => {
-                                        const isEm = e.target.value === "yes";
-                                        setNewAppt({ ...newAppt, isEmergency: isEm, priority: isEm ? "Emergency" : newAppt.priority });
-                                    }}
-                                    placeholder="Select"
-                                />
-                            </div>
-
-                            {/* Consent Checkbox */}
-                            <div className="ha-consent-row">
-                                <input type="checkbox" checked={newAppt.consent} onChange={e => setNewAppt({ ...newAppt, consent: e.target.checked })} />
-                                <span>I confirm that all the information provided above is <strong>accurate and complete</strong>. I understand that incorrect information may delay treatment or affect the quality of care.</span>
-                            </div>
-
-                            <div className="ha-form-submit" style={{ marginTop: 20 }}>
-                                {newAppt.isEmergency
-                                    ? <button type="submit" className="ha-btn" style={{ background: '#dc2626', color: '#fff' }}>🚨 Redirect to Emergency Dashboard</button>
-                                    : <button type="submit" className="ha-btn ha-btn-primary">📅 Schedule Appointment</button>
-                                }
-                            </div>
-                        </form>
-                    </div>
-
                     {/* Upcoming Appointments Table */}
                     <div className="ha-panel">
                         <div className="ha-panel-header"><h3>Upcoming Appointments</h3></div>
@@ -753,6 +651,48 @@ export default function AdminDashboard() {
                             ))}</tbody></table>
                     </div>
                 </>)}
+
+                {/* ═══ BLOOD BANK ═══ */}
+                {activeView === "blood-bank" && (
+                    <>
+                        <div className="ha-panel">
+                            <div className="ha-panel-header"><h3>Blood Bank Inventory</h3></div>
+                            <div style={{ padding: 24 }}>
+                                {hospital.bloodBank ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+                                        {(() => {
+                                            const stocks = getHospitalBloodStocks(hospital.id);
+                                            return stocks.map(stock => (
+                                                <div key={stock.group} style={{
+                                                    background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20,
+                                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                                                }}>
+                                                    <div style={{ fontSize: 24, fontWeight: 800, color: '#334155' }}>{stock.group}</div>
+                                                    <div style={{ fontSize: 32, fontWeight: 700, color: stock.status === 'Critical' ? '#ef4444' : stock.status === 'Low' ? '#f59e0b' : '#10b981' }}>
+                                                        {stock.units} <span style={{ fontSize: 14, color: '#94a3b8', fontWeight: 500 }}>units</span>
+                                                    </div>
+                                                    <div style={{
+                                                        fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5,
+                                                        padding: '4px 10px', borderRadius: 20,
+                                                        background: stock.status === 'Critical' ? '#fee2e2' : stock.status === 'Low' ? '#fef3c7' : '#dcfce7',
+                                                        color: stock.status === 'Critical' ? '#991b1b' : stock.status === 'Low' ? '#92400e' : '#166534'
+                                                    }}>
+                                                        {stock.status}
+                                                    </div>
+                                                </div>
+                                            ));
+                                        })()}
+                                    </div>
+                                ) : (
+                                    <div style={{ textAlign: 'center', color: '#64748b', padding: 40 }}>
+                                        This hospital does not have an active Blood Bank facility enabled in settings.
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </>
+                )}
             </main>
         </div>
     );

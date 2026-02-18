@@ -3,43 +3,19 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { hospitals } from "@/lib/hospitals";
-
-type BedStatus = "free" | "occupied" | "requested";
-interface Bed {
-    id: string;
-    label: string;
-    status: BedStatus;
-}
-
-function generateBeds(prefix: string, total: number, available: number): Bed[] {
-    const beds: Bed[] = [];
-    // Create array of indices and shuffle to randomize which are free
-    const indices = Array.from({ length: total }, (_, i) => i);
-    for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j], indices[i]];
-    }
-    const freeSet = new Set(indices.slice(0, available));
-
-    for (let i = 0; i < total; i++) {
-        beds.push({
-            id: `${prefix}${i + 1}`,
-            label: `${prefix}${i + 1}`,
-            status: freeSet.has(i) ? "free" : "occupied",
-        });
-    }
-    return beds;
-}
+import { getHospitalBeds, saveHospitalBeds, getBedStats, type Bed, type BedStatus } from "@/lib/bed-data";
 
 export default function BedStatus() {
     const [selectedHospital, setSelectedHospital] = useState("");
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [hasChecked, setHasChecked] = useState(false);
+
+    // Stats
     const [stats, setStats] = useState({
-        general: { available: 12, total: 20 },
-        ventilator: { available: 6, total: 10 },
-        icu: { available: 4, total: 10 },
+        general: { available: 0, total: 20 },
+        ventilator: { available: 0, total: 10 },
+        icu: { available: 0, total: 10 },
     });
 
     // Search per ward
@@ -66,18 +42,47 @@ export default function BedStatus() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Listen for updates from other tabs/windows or admin panel
+    useEffect(() => {
+        const handleStorageChange = () => {
+            if (selectedHospital && hasChecked) {
+                refreshData(selectedHospital);
+            }
+        };
+
+        window.addEventListener("medicure-bed-update", handleStorageChange);
+        window.addEventListener("storage", handleStorageChange); // Cross-tab
+        return () => {
+            window.removeEventListener("medicure-bed-update", handleStorageChange);
+            window.removeEventListener("storage", handleStorageChange);
+        };
+    }, [selectedHospital, hasChecked]);
+
+    const refreshData = (hospId: string) => {
+        const allBeds = getHospitalBeds(hospId);
+
+        // Split by ward
+        const gBeds = allBeds.filter(b => b.ward === "General");
+        const iBeds = allBeds.filter(b => b.ward === "ICU");
+        const vBeds = allBeds.filter(b => b.ward === "Ventilator");
+
+        setGeneralBeds(gBeds);
+        setIcuBeds(iBeds);
+        setVentilatorBeds(vBeds);
+
+        // Update stats
+        const newStats = getBedStats(allBeds);
+        setStats({
+            general: { available: newStats.general.free, total: newStats.general.total },
+            ventilator: { available: newStats.ventilator.free, total: newStats.ventilator.total },
+            icu: { available: newStats.icu.free, total: newStats.icu.total },
+        });
+    };
+
     const handleCheck = () => {
         if (!selectedHospital) return;
-        const newStats = {
-            general: { available: Math.floor(Math.random() * 14) + 4, total: 20 },
-            ventilator: { available: Math.floor(Math.random() * 7) + 2, total: 10 },
-            icu: { available: Math.floor(Math.random() * 7) + 2, total: 10 },
-        };
-        setStats(newStats);
-        setGeneralBeds(generateBeds("G", newStats.general.total, newStats.general.available));
-        setIcuBeds(generateBeds("ICU", newStats.icu.total, newStats.icu.available));
-        setVentilatorBeds(generateBeds("V", newStats.ventilator.total, newStats.ventilator.available));
         setHasChecked(true);
+        refreshData(selectedHospital);
         setSearchGeneral("");
         setSearchICU("");
         setSearchVentilator("");
@@ -89,13 +94,16 @@ export default function BedStatus() {
     };
 
     const confirmRequest = () => {
-        if (!requestModal) return;
-        const { bed, ward } = requestModal;
-        const updateBeds = (beds: Bed[]) =>
-            beds.map((b) => (b.id === bed.id ? { ...b, status: "requested" as BedStatus } : b));
-        if (ward === "general") setGeneralBeds(updateBeds);
-        if (ward === "icu") setIcuBeds(updateBeds);
-        if (ward === "ventilator") setVentilatorBeds(updateBeds);
+        if (!requestModal || !selectedHospital) return;
+        const { bed } = requestModal;
+
+        // Update in storage
+        const allBeds = getHospitalBeds(selectedHospital);
+        const updatedBeds = allBeds.map(b => b.id === bed.id ? { ...b, status: "requested" as BedStatus } : b);
+        saveHospitalBeds(selectedHospital, updatedBeds);
+
+        // Local refresh
+        refreshData(selectedHospital);
         setRequestModal(null);
     };
 

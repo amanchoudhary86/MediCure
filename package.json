@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "dev": "npm --prefix medicure-nextjs run dev",
+    "build": "npm --prefix medicure-nextjs run build",
+    "start": "npm --prefix medicure-nextjs run start",
+    "lint": "npm --prefix medicure-nextjs run lint"
+  },
+  "dependencies": {
+    "@google/gemini-cli": "^0.29.0"
+  }
+}

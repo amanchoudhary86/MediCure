@@ -10,6 +10,23 @@ import {
     getCriticalCount,
     type BloodGroup,
 } from "@/lib/bloodBanks";
+import { getHospitalBloodStocks } from "@/lib/blood-data";
+import {
+    Droplets,
+    AlertTriangle,
+    Tent,
+    Hospital,
+    Microscope,
+    MapPin,
+    Phone,
+    AlertCircle,
+    Activity,
+    Search,
+    ChevronDown,
+    Calendar,
+    User,
+    ClipboardList
+} from "lucide-react";
 
 export default function BloodAvailability() {
     const [selectedBank, setSelectedBank] = useState("");
@@ -17,6 +34,10 @@ export default function BloodAvailability() {
     const dropdownRef = useRef<HTMLDivElement>(null);
     const [campSearch, setCampSearch] = useState("");
     const [campTypeFilter, setCampTypeFilter] = useState("All");
+
+    // Local State for Blood Data (Synced)
+    const [allBloodBanks, setAllBloodBanks] = useState(hospitalBloodBanks);
+    // We initialize with static layout, but content will update Effect
 
     // Urgent request form
     const [urgentModal, setUrgentModal] = useState(false);
@@ -29,6 +50,22 @@ export default function BloodAvailability() {
         contact: "",
     });
 
+    // Load fresh data
+    useEffect(() => {
+        const loadData = () => {
+            // Map static hospitals to their dynamic data
+            const dynamicBanks = hospitalBloodBanks.map(bank => {
+                const freshStocks = getHospitalBloodStocks(bank.hospitalId);
+                return { ...bank, stocks: freshStocks };
+            });
+            setAllBloodBanks(dynamicBanks);
+        };
+
+        loadData();
+        window.addEventListener("medicure-blood-update", loadData);
+        return () => window.removeEventListener("medicure-blood-update", loadData);
+    }, []);
+
     // close dropdown on outside click
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -40,13 +77,13 @@ export default function BloodAvailability() {
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    // Summary stats
-    const citySummary = getCityWideSummary(hospitalBloodBanks);
-    const totalUnits = getTotalUnits(hospitalBloodBanks);
-    const criticalCount = getCriticalCount(hospitalBloodBanks);
+    // Summary stats (derived from dynamic state)
+    const citySummary = getCityWideSummary(allBloodBanks);
+    const totalUnits = getTotalUnits(allBloodBanks);
+    const criticalCount = getCriticalCount(allBloodBanks);
     const activeCamps = donationCamps.length;
 
-    const selectedBankData = hospitalBloodBanks.find((b) => b.hospitalId === selectedBank);
+    const selectedBankData = allBloodBanks.find((b) => b.hospitalId === selectedBank);
 
     // Filter camps
     const campTypes = ["All", ...Array.from(new Set(donationCamps.map((c) => c.type)))];
@@ -156,7 +193,10 @@ export default function BloodAvailability() {
                     box-shadow: 0 12px 40px rgba(255,107,107,0.15);
                     border-color: rgba(255,107,107,0.2);
                 }
-                .blood-summary-icon { font-size: 36px; margin-bottom: 12px; }
+                .blood-summary-icon { 
+                    display: flex; align-items: center; justify-content: center;
+                    margin-bottom: 12px; 
+                }
                 .blood-summary-value {
                     font-size: 36px; font-weight: 800; margin: 0 0 4px;
                 }
@@ -177,7 +217,10 @@ export default function BloodAvailability() {
                     font-size: 24px; font-weight: 700; color: #fff; margin: 0 0 20px;
                     display: flex; align-items: center; gap: 10px;
                 }
-                .blood-section-title .section-icon { font-size: 28px; }
+                .blood-section-title .section-icon { 
+                    color: #ff6b6b;
+                    display: flex; align-items: center; justify-content: center;
+                }
                 .blood-group-grid {
                     display: grid; grid-template-columns: repeat(8, 1fr); gap: 12px;
                 }
@@ -542,23 +585,31 @@ export default function BloodAvailability() {
                 {/* ══ SUMMARY CARDS ══ */}
                 <div className="blood-summary-grid">
                     <div className="blood-summary-card">
-                        <div className="blood-summary-icon">🩸</div>
+                        <div className="blood-summary-icon">
+                            <Droplets size={40} color="#ff6b6b" fill="#ff6b6b" fillOpacity={0.2} />
+                        </div>
                         <p className="blood-summary-value red">{totalUnits}</p>
                         <p className="blood-summary-label">Total Units Available</p>
                     </div>
                     <div className="blood-summary-card">
-                        <div className="blood-summary-icon">⚠️</div>
+                        <div className="blood-summary-icon">
+                            <AlertTriangle size={40} color="#fbbf24" fill="#fbbf24" fillOpacity={0.2} />
+                        </div>
                         <p className="blood-summary-value amber">{criticalCount}</p>
                         <p className="blood-summary-label">Critical Shortages</p>
                     </div>
                     <div className="blood-summary-card">
-                        <div className="blood-summary-icon">🏕️</div>
+                        <div className="blood-summary-icon">
+                            <Tent size={40} color="#60a5fa" fill="#60a5fa" fillOpacity={0.2} />
+                        </div>
                         <p className="blood-summary-value blue">{activeCamps}</p>
                         <p className="blood-summary-label">Active Donation Camps</p>
                     </div>
                     <div className="blood-summary-card">
-                        <div className="blood-summary-icon">🏥</div>
-                        <p className="blood-summary-value green">{hospitalBloodBanks.length}</p>
+                        <div className="blood-summary-icon">
+                            <Hospital size={40} color="#4ade80" fill="#4ade80" fillOpacity={0.2} />
+                        </div>
+                        <p className="blood-summary-value green">{allBloodBanks.length}</p>
                         <p className="blood-summary-label">Blood Banks Online</p>
                     </div>
                 </div>
@@ -566,7 +617,7 @@ export default function BloodAvailability() {
                 {/* ══ CITY-WIDE BLOOD GROUP OVERVIEW ══ */}
                 <div className="blood-group-section">
                     <h2 className="blood-section-title">
-                        <span className="section-icon">🔬</span> City-Wide Blood Group Inventory
+                        <span className="section-icon"><Microscope size={28} /></span> City-Wide Blood Group Inventory
                     </h2>
                     <div className="blood-group-grid">
                         {citySummary.map((item) => (
@@ -582,7 +633,7 @@ export default function BloodAvailability() {
                 {/* ══ HOSPITAL BLOOD BANK INVENTORY ══ */}
                 <div className="blood-hospital-section">
                     <h2 className="blood-section-title">
-                        <span className="section-icon">🏥</span> Hospital Blood Bank Stock
+                        <span className="section-icon"><Hospital size={28} /></span> Hospital Blood Bank Stock
                     </h2>
 
                     <div className="blood-hosp-select">
@@ -596,10 +647,11 @@ export default function BloodAvailability() {
                                 ) : (
                                     <span className="placeholder">Select a Hospital Blood Bank</span>
                                 )}
+                                <ChevronDown className={`dropdown-chevron ${isOpen ? "open" : ""}`} size={20} style={{ position: 'absolute', right: 20, top: '50%', transform: 'translateY(-50%)', transition: 'transform 0.3s ease', color: '#ff6b6b' }} />
                             </div>
                             {isOpen && (
                                 <div className="blood-dropdown-list">
-                                    {hospitalBloodBanks.map((bank) => (
+                                    {allBloodBanks.map((bank) => (
                                         <div
                                             key={bank.hospitalId}
                                             className={`blood-dd-item ${selectedBank === bank.hospitalId ? "selected" : ""}`}
@@ -609,7 +661,9 @@ export default function BloodAvailability() {
                                             }}
                                         >
                                             <div className="blood-dd-item-name">{bank.bloodBankName}</div>
-                                            <div className="blood-dd-item-loc">📍 {bank.location} — ☎ {bank.contact}</div>
+                                            <div className="blood-dd-item-loc">
+                                                <MapPin size={12} style={{ display: 'inline', marginRight: 4 }} /> {bank.location} — <Phone size={12} style={{ display: 'inline', marginRight: 4 }} /> {bank.contact}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -639,8 +693,8 @@ export default function BloodAvailability() {
                                         {selectedBankData.stocks.map((stock) => (
                                             <tr key={stock.group}>
                                                 <td>
-                                                    <span className={`stock-group-label ${stock.status.toLowerCase()}`} style={{ color: stock.status === "Available" ? "#4ade80" : stock.status === "Low" ? "#fbbf24" : "#ff6b6b" }}>
-                                                        🩸 {stock.group}
+                                                    <span className={`stock-group-label ${stock.status.toLowerCase()}`} style={{ color: stock.status === "Available" ? "#4ade80" : stock.status === "Low" ? "#fbbf24" : "#ff6b6b", display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                        <Droplets size={18} fill={stock.status === "Available" ? "#4ade80" : stock.status === "Low" ? "#fbbf24" : "#ff6b6b"} fillOpacity={0.2} /> {stock.group}
                                                     </span>
                                                 </td>
                                                 <td>
@@ -671,14 +725,14 @@ export default function BloodAvailability() {
                 {/* ══ URGENT BLOOD REQUEST ══ */}
                 <div className="blood-urgent-section">
                     <button className="blood-urgent-btn" onClick={() => setUrgentModal(true)}>
-                        <span className="pulse-dot" /> Urgent Blood Request
+                        <Activity size={20} /> Urgent Blood Request
                     </button>
                 </div>
 
                 {/* ══ DONATION CAMPS & COMMUNITIES ══ */}
                 <div className="blood-camps-section">
                     <h2 className="blood-section-title">
-                        <span className="section-icon">🏕️</span> Blood Donation Camps & Communities — Jaipur
+                        <span className="section-icon"><Calendar size={28} /></span> Blood Donation Camps & Communities — Jaipur
                     </h2>
 
                     <div className="camps-controls">
@@ -707,10 +761,10 @@ export default function BloodAvailability() {
                                     <h3 className="camp-card-name">{camp.name}</h3>
                                     <span className="camp-card-type">{camp.type}</span>
                                 </div>
-                                <div className="camp-card-loc">📍 {camp.location}</div>
+                                <div className="camp-card-loc"><MapPin size={14} /> {camp.location}</div>
                                 <p className="camp-card-desc">{camp.description}</p>
                                 {camp.contact && (
-                                    <div className="camp-card-contact">☎ {camp.contact}</div>
+                                    <div className="camp-card-contact"><Phone size={14} /> {camp.contact}</div>
                                 )}
                             </div>
                         ))}
@@ -727,7 +781,9 @@ export default function BloodAvailability() {
             {urgentModal && (
                 <div className="blood-modal-overlay" onClick={() => setUrgentModal(false)}>
                     <div className="blood-modal" onClick={(e) => e.stopPropagation()}>
-                        <h3>🚨 Urgent Blood Request</h3>
+                        <h3 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                            <AlertCircle color="#ff6b6b" /> Urgent Blood Request
+                        </h3>
                         <p className="modal-subtitle">Submit an urgent request — nearby blood banks will be notified immediately.</p>
 
                         <div className="blood-form-row">

@@ -19,7 +19,11 @@ app.secret_key = "anything_secret_is_good"
 
 @app.route('/', methods=['GET'])
 def home():
-    return render_template('index.html')
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        print(f"ERROR RENDER INDEX: {e}")
+        return str(e), 500
 
 
 @app.route('/contact', methods=['GET', 'POST'])
@@ -48,6 +52,11 @@ def landing():
 @app.route('/all_doctor')
 def all_doc():
     return render_template('doctor.html')
+
+
+@app.route('/login')
+def unified_login():
+    return render_template('login_unified.html')
 
 
 @app.route('/confirmation', methods=['POST', 'GET'])
@@ -91,4 +100,5 @@ def page_not_found(error):
 
 
 if __name__ == '__main__':
-    app.run(port=8000, debug=True)
+    # usage: python app.py
+    app.run(port=5000, debug=True)

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | MediCure</title>
+    <!-- Favicon -->
+    <link rel="icon" href="../static/img/favicon.png">
+
+    <!-- Using Google Fonts for professional typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-image: url('../static/img/slider2.jpg');
+            /* Reuse existing asset */
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(26, 118, 209, 0.85);
+            /* Proper overlay color matches brand */
+            z-index: 1;
+        }
+
+        .login-container {
+            position: relative;
+            z-index: 2;
+            background: #fff;
+            width: 100%;
+            max-width: 450px;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .login-header {
+            margin-bottom: 30px;
+        }
+
+        .login-header h2 {
+            color: #2C2D3F;
+            font-weight: 600;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .toggle-container {
+            display: flex;
+            background: #f1f1f1;
+            border-radius: 30px;
+            margin-bottom: 30px;
+            position: relative;
+            padding: 4px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 12px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .toggle-btn.active {
+            background: #1A76D1;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(26, 118, 209, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #2C2D3F;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 12px 15px 12px 40px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+            outline: none;
+        }
+
+        .input-wrapper input:focus {
+            border-color: #1A76D1;
+            box-shadow: 0 0 0 3px rgba(26, 118, 209, 0.1);
+        }
+
+        .input-wrapper i.icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+        }
+
+        .input-wrapper i.toggle-password {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            cursor: pointer;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background: #1A76D1;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+
+        .submit-btn:hover {
+            background: #2C2D3F;
+        }
+
+        .form-section {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .form-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .home-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+
+        .home-link:hover {
+            color: #1A76D1;
+        }
+
+        .demo-credentials {
+            margin-top: 25px;
+            font-size: 12px;
+            text-align: left;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .demo-credentials h4 {
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 13px;
+        }
+
+        .demo-credentials code {
+            display: block;
+            margin-bottom: 4px;
+            color: #1A76D1;
+            background: rgba(26, 118, 209, 0.1);
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-container">
+        <div class="login-header">
+            <h2>Portal Login</h2>
+            <p style="color: #666; font-size: 14px;">Select your role to continue</p>
+        </div>
+
+        <div class="toggle-container">
+            <button class="toggle-btn active" onclick="switchTab('central')">Central Control</button>
+            <button class="toggle-btn" onclick="switchTab('hospital')">Hospital Admin</button>
+        </div>
+
+        <!-- Central Control Login Form -->
+        <div id="central-form" class="form-section active">
+            <form action="/superadmin_login" method="post" autocomplete="off">
+                <div class="form-group">
+                    <label>Username</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-user icon"></i>
+                        <input type="text" name="username" placeholder="Enter username" required autocomplete="off">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock icon"></i>
+                        <input type="password" name="password" placeholder="Enter password" required
+                            autocomplete="new-password" id="central-pass">
+                        <i class="fa-solid fa-eye toggle-password" onclick="togglePass('central-pass')"></i>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn">Login as Central Admin</button>
+            </form>
+
+            <div class="demo-credentials">
+                <h4>🔑 Central Control Demo:</h4>
+                <code>User: superadmin</code>
+                <code>Pass: admin</code>
+            </div>
+        </div>
+
+        <!-- Hospital Admin Login Form -->
+        <div id="hospital-form" class="form-section">
+            <form action="/admin_login" method="post" autocomplete="off">
+                <div class="form-group">
+                    <label>Username (Email)</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-envelope icon"></i>
+                        <input type="text" name="username" placeholder="Enter email" required autocomplete="off">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock icon"></i>
+                        <input type="password" name="password" placeholder="Enter password" required
+                            autocomplete="new-password" id="hospital-pass">
+                        <i class="fa-solid fa-eye toggle-password" onclick="togglePass('hospital-pass')"></i>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn">Login as Hospital Admin</button>
+            </form>
+
+            <div class="demo-credentials">
+                <h4>🛠️ Hospital Admin Demo:</h4>
+                <code>User: ashwini@gmail.com | Pass: Ashwini2025</code>
+                <code>User: artemis@gmail.com | Pass: Artemis2025</code>
+            </div>
+        </div>
+
+        <a href="/" class="home-link"><i class="fa-solid fa-arrow-left"></i> Back to Home</a>
+    </div>
+
+    <script>
+        function switchTab(tab) {
+            const centralForm = document.getElementById('central-form');
+            const hospitalForm = document.getElementById('hospital-form');
+            const btns = document.querySelectorAll('.toggle-btn');
+
+            if (tab === 'central') {
+                centralForm.classList.add('active');
+                hospitalForm.classList.remove('active');
+                btns[0].classList.add('active');
+                btns[1].classList.remove('active');
+            } else {
+                centralForm.classList.remove('active');
+                hospitalForm.classList.add('active');
+                btns[0].classList.remove('active');
+                btns[1].classList.add('active');
+            }
+        }
+
+        function togglePass(id) {
+            const input = document.getElementById(id);
+            const icon = input.nextElementSibling;
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.add('fa-eye');
+                icon.classList.remove('fa-eye-slash');
+            }
+        }
+    </script>
+</body>
+
+</html>

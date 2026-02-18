@@ -1,38 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-// Mock data
-const mockHospitals = [
-    { id: 1, name: "AIIMS Delhi", city: "New Delhi", beds: 2500, status: "Active", occupancy: 82 },
-    { id: 2, name: "Safdarjung Hospital", city: "New Delhi", beds: 1800, status: "Active", occupancy: 75 },
-    { id: 3, name: "RML Hospital", city: "New Delhi", beds: 1200, status: "Active", occupancy: 90 },
-    { id: 4, name: "Lok Nayak Hospital", city: "New Delhi", beds: 2000, status: "Maintenance", occupancy: 65 },
-];
+import { hospitals } from "@/lib/hospitals";
+import { getHospitalBeds, getBedStats } from "@/lib/bed-data";
 
 type ActiveView = "dashboard" | "add-hospital" | "hospital-status";
 
 export default function SuperAdminDashboard() {
     const [activeView, setActiveView] = useState<ActiveView>("dashboard");
-    const [hospitals, setHospitals] = useState(mockHospitals);
+    // We use the static list + local state for any "newly added" hospitals in this session
+    // For a real app, this would be a DB fetch.
+    const [hospitalList, setHospitalList] = useState(hospitals);
     const [newHospital, setNewHospital] = useState({ name: "", city: "", beds: "", contact: "", email: "" });
     const [successMsg, setSuccessMsg] = useState("");
+
+    // Stats State
+    const [stats, setStats] = useState({
+        activeHospitals: 0,
+        totalBeds: 0,
+        avgOccupancy: 0,
+    });
+    const [hydrated, setHydrated] = useState(false);
+
     const router = useRouter();
+
+    useEffect(() => {
+        setHydrated(true);
+        // Calculate totals based on real bed data
+        let totalBeds = 0;
+        let totalOccupied = 0;
+
+        hospitalList.forEach(h => {
+            const beds = getHospitalBeds(h.id);
+            // If beds are not generated yet, getHospitalBeds generates them.
+            // But we need to know the COUNT.
+            // getHospitalBeds returns the array.
+            totalBeds += beds.length;
+            totalOccupied += beds.filter(b => b.status === "occupied").length;
+        });
+
+        const activeHospitals = hospitalList.length;
+        const avgOcc = totalBeds > 0 ? Math.round((totalOccupied / totalBeds) * 100) : 0;
+
+        setStats({
+            activeHospitals,
+            totalBeds,
+            avgOccupancy: avgOcc
+        });
+
+        // Listen for updates
+        const handleUpdate = () => {
+            // Re-calculate
+            let tBeds = 0;
+            let tOcc = 0;
+            hospitalList.forEach(h => {
+                const beds = getHospitalBeds(h.id);
+                tBeds += beds.length;
+                tOcc += beds.filter(b => b.status === "occupied").length;
+            });
+            setStats({
+                activeHospitals: hospitalList.length,
+                totalBeds: tBeds,
+                avgOccupancy: tBeds > 0 ? Math.round((tOcc / tBeds) * 100) : 0
+            });
+        };
+
+        window.addEventListener("medicure-bed-update", handleUpdate);
+        return () => window.removeEventListener("medicure-bed-update", handleUpdate);
+    }, [hospitalList]);
+
 
     const handleAddHospital = (e: React.FormEvent) => {
         e.preventDefault();
-        const hospital = {
-            id: hospitals.length + 1,
+        // In a real app we would push to DB. Here we just push to local state for demo.
+        const newH = {
+            id: `hosp_${Date.now()}`,
             name: newHospital.name,
-            city: newHospital.city,
-            beds: parseInt(newHospital.beds) || 0,
-            status: "Active" as const,
-            occupancy: 0,
+            location: newHospital.city, // mapping city to location for consistency
+            timings: "24 Hours",
+            rating: 0,
+            email: newHospital.email,
+            password: "default_password"
         };
-        setHospitals([...hospitals, hospital]);
+        setHospitalList([...hospitalList, newH]);
         setNewHospital({ name: "", city: "", beds: "", contact: "", email: "" });
-        setSuccessMsg(`${hospital.name} added successfully!`);
+        setSuccessMsg(`${newH.name} added successfully! (Session only)`);
         setTimeout(() => setSuccessMsg(""), 3000);
     };
 
@@ -40,8 +93,7 @@ export default function SuperAdminDashboard() {
         router.push("/");
     };
 
-    const totalBeds = hospitals.reduce((sum, h) => sum + h.beds, 0);
-    const avgOccupancy = Math.round(hospitals.reduce((sum, h) => sum + h.occupancy, 0) / hospitals.length);
+    if (!hydrated) return null; // Prevent hydration mismatch on localStorage
 
     return (
         <div className="sa-root">
@@ -213,7 +265,7 @@ export default function SuperAdminDashboard() {
                 /* ─── Stats Cards ─── */
                 .sa-stats {
                     display: grid;
-                    grid-template-columns: repeat(4, 1fr);
+                    grid-template-columns: repeat(3, 1fr);
                     gap: 20px;
                     margin-bottom: 32px;
                 }
@@ -245,7 +297,6 @@ export default function SuperAdminDashboard() {
 
                 .sa-stat-icon.blue { background: #eff6ff; color: #3b82f6; }
                 .sa-stat-icon.green { background: #f0fdf4; color: #22c55e; }
-                .sa-stat-icon.purple { background: #faf5ff; color: #a855f7; }
                 .sa-stat-icon.orange { background: #fff7ed; color: #f97316; }
 
                 .sa-stat-value {
@@ -484,22 +535,17 @@ export default function SuperAdminDashboard() {
                         <div className="sa-stats">
                             <div className="sa-stat-card">
                                 <div className="sa-stat-icon blue">🏥</div>
-                                <div className="sa-stat-value">{hospitals.length}</div>
+                                <div className="sa-stat-value">{stats.activeHospitals}</div>
                                 <div className="sa-stat-label">Active Hospitals</div>
                             </div>
                             <div className="sa-stat-card">
                                 <div className="sa-stat-icon green">🛏️</div>
-                                <div className="sa-stat-value">{totalBeds.toLocaleString()}</div>
+                                <div className="sa-stat-value">{stats.totalBeds.toLocaleString()}</div>
                                 <div className="sa-stat-label">Total Beds</div>
                             </div>
                             <div className="sa-stat-card">
-                                <div className="sa-stat-icon purple">👨‍⚕️</div>
-                                <div className="sa-stat-value">85</div>
-                                <div className="sa-stat-label">Doctors</div>
-                            </div>
-                            <div className="sa-stat-card">
                                 <div className="sa-stat-icon orange">📊</div>
-                                <div className="sa-stat-value">{avgOccupancy}%</div>
+                                <div className="sa-stat-value">{stats.avgOccupancy}%</div>
                                 <div className="sa-stat-label">Avg Occupancy</div>
                             </div>
                         </div>
@@ -512,34 +558,41 @@ export default function SuperAdminDashboard() {
                                 <thead>
                                     <tr>
                                         <th>Hospital</th>
-                                        <th>City</th>
+                                        <th>Location</th>
                                         <th>Total Beds</th>
                                         <th>Occupancy</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {hospitals.map((h) => (
-                                        <tr key={h.id}>
-                                            <td style={{ fontWeight: 600 }}>{h.name}</td>
-                                            <td>{h.city}</td>
-                                            <td>{h.beds.toLocaleString()}</td>
-                                            <td>
-                                                <span className="sa-occ-bar">
-                                                    <span className="sa-occ-fill" style={{
-                                                        width: `${h.occupancy}%`,
-                                                        background: h.occupancy > 85 ? '#ef4444' : h.occupancy > 70 ? '#f59e0b' : '#22c55e'
-                                                    }} />
-                                                </span>
-                                                {h.occupancy}%
-                                            </td>
-                                            <td>
-                                                <span className={`sa-badge ${h.status === "Active" ? "active" : "maintenance"}`}>
-                                                    {h.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {hospitalList.map((h) => {
+                                        const beds = getHospitalBeds(h.id);
+                                        const count = beds.length || 220; // fallback just in case
+                                        const occupied = beds.filter(b => b.status === "occupied").length;
+                                        const occPct = count > 0 ? Math.round((occupied / count) * 100) : 0;
+
+                                        return (
+                                            <tr key={h.id}>
+                                                <td style={{ fontWeight: 600 }}>{h.name}</td>
+                                                <td>{h.location}</td>
+                                                <td>{count.toLocaleString()}</td>
+                                                <td>
+                                                    <span className="sa-occ-bar">
+                                                        <span className="sa-occ-fill" style={{
+                                                            width: `${occPct}%`,
+                                                            background: occPct > 85 ? '#ef4444' : occPct > 70 ? '#f59e0b' : '#22c55e'
+                                                        }} />
+                                                    </span>
+                                                    {occPct}%
+                                                </td>
+                                                <td>
+                                                    <span className={`sa-badge active`}>
+                                                        Active
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -560,12 +613,8 @@ export default function SuperAdminDashboard() {
                                     <input type="text" required placeholder="e.g. City General Hospital" value={newHospital.name} onChange={(e) => setNewHospital({ ...newHospital, name: e.target.value })} />
                                 </div>
                                 <div className="sa-form-group">
-                                    <label>City</label>
+                                    <label>City / Location</label>
                                     <input type="text" required placeholder="e.g. New Delhi" value={newHospital.city} onChange={(e) => setNewHospital({ ...newHospital, city: e.target.value })} />
-                                </div>
-                                <div className="sa-form-group">
-                                    <label>Total Beds</label>
-                                    <input type="number" required placeholder="e.g. 500" value={newHospital.beds} onChange={(e) => setNewHospital({ ...newHospital, beds: e.target.value })} />
                                 </div>
                                 <div className="sa-form-group">
                                     <label>Contact Number</label>
@@ -594,35 +643,42 @@ export default function SuperAdminDashboard() {
                                 <tr>
                                     <th>#</th>
                                     <th>Hospital</th>
-                                    <th>City</th>
+                                    <th>Location</th>
                                     <th>Total Beds</th>
                                     <th>Occupancy</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {hospitals.map((h, i) => (
-                                    <tr key={h.id}>
-                                        <td>{i + 1}</td>
-                                        <td style={{ fontWeight: 600 }}>{h.name}</td>
-                                        <td>{h.city}</td>
-                                        <td>{h.beds.toLocaleString()}</td>
-                                        <td>
-                                            <span className="sa-occ-bar">
-                                                <span className="sa-occ-fill" style={{
-                                                    width: `${h.occupancy}%`,
-                                                    background: h.occupancy > 85 ? '#ef4444' : h.occupancy > 70 ? '#f59e0b' : '#22c55e'
-                                                }} />
-                                            </span>
-                                            {h.occupancy}%
-                                        </td>
-                                        <td>
-                                            <span className={`sa-badge ${h.status === "Active" ? "active" : "maintenance"}`}>
-                                                {h.status}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {hospitalList.map((h, i) => {
+                                    const beds = getHospitalBeds(h.id);
+                                    const count = beds.length || 220;
+                                    const occupied = beds.filter(b => b.status === "occupied").length;
+                                    const occPct = count > 0 ? Math.round((occupied / count) * 100) : 0;
+
+                                    return (
+                                        <tr key={h.id}>
+                                            <td>{i + 1}</td>
+                                            <td style={{ fontWeight: 600 }}>{h.name}</td>
+                                            <td>{h.location}</td>
+                                            <td>{count.toLocaleString()}</td>
+                                            <td>
+                                                <span className="sa-occ-bar">
+                                                    <span className="sa-occ-fill" style={{
+                                                        width: `${occPct}%`,
+                                                        background: occPct > 85 ? '#ef4444' : occPct > 70 ? '#f59e0b' : '#22c55e'
+                                                    }} />
+                                                </span>
+                                                {occPct}%
+                                            </td>
+                                            <td>
+                                                <span className={`sa-badge active`}>
+                                                    Active
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>

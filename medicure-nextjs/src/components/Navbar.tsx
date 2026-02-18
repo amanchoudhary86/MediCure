@@ -118,7 +118,7 @@ const Navbar = () => {
             .btn-appointment {
                 font-size: 15px;
                 font-weight: 700;
-                color: #ffffff;
+                color: #ffffff !important;
                 background: linear-gradient(45deg, #1A76D1, #00C6FF);
                 padding: 12px 28px;
                 border-radius: 50px;

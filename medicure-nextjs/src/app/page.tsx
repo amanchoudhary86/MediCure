@@ -4,10 +4,8 @@ import Schedule from "@/components/Schedule";
 import Features from "@/components/Features";
 import FunFacts from "@/components/FunFacts";
 import WhyChoose from "@/components/WhyChoose";
-import CallAction from "@/components/CallAction";
 import Portfolio from "@/components/Portfolio";
 import Services from "@/components/Services";
-import Pricing from "@/components/Pricing";
 
 import Appointment from "@/components/Appointment";
 import Newsletter from "@/components/Newsletter";
@@ -22,10 +20,9 @@ export default function Home() {
       <Features />
       <FunFacts />
       <WhyChoose />
-      <CallAction />
+
       <Portfolio />
       <Services />
-      <Pricing />
 
       <Appointment />
       <Newsletter />
