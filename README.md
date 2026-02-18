@@ -47,9 +47,6 @@ MediCure is a comprehensive, real-time hospital management and resource tracking
     npm run dev
     ```
 
-4.  **Open the application**:
-    Navigate to [http://localhost:3000](http://localhost:3000) in your browser.
-
 ## 🔑 Demo Credentials
 
 To explore the admin features, use the following demo credentials. You can also download the [Admin Credentials Excel](./public/admin_credentials.xlsx) from the login page.
